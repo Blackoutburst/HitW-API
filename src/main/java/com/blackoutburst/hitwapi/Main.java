@@ -1,5 +1,6 @@
 package com.blackoutburst.hitwapi;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.bukkit.Bukkit;
@@ -11,7 +12,9 @@ import spark.Spark;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Calendar;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.zip.GZIPInputStream;
 
 public class Main extends JavaPlugin {
@@ -68,9 +71,18 @@ public class Main extends JavaPlugin {
                 uuid = new String(dashedUUID);
             }
 
-            final File file = new File("./plugins/HitW/playerdata/"+uuid+".json");
+            File file = new File("./plugins/HitW/playerdata/monthly/"+uuid+".json");
             if (!file.exists()) {
                 return "0, 0";
+            }
+            int currentMonth = Calendar.getInstance(TimeZone.getTimeZone("EST")).get(Calendar.MONTH);
+
+            //temporary workaround until the datafixer is ran on everybody
+            if (currentMonth == 6) {
+                file = new File("./plugins/HitW/playerdata/"+uuid+".json");
+                if (!file.exists()) {
+                    return "0, 0";
+                }
             }
 
             List<String> lines = Files.readAllLines(file.toPath());
@@ -81,10 +93,13 @@ public class Main extends JavaPlugin {
             JsonParser parser = new JsonParser();
             JsonObject data = parser.parse(fileContents).getAsJsonObject().get("data").getAsJsonObject();
 
-            int credits = data.get("credits").getAsInt();
+            JsonElement month = data.get("month");
+            if (month != null) {
+                if (month.getAsInt() != currentMonth) return "0, 0";
+            }
             int creditsEarned = data.get("creditsEarned").getAsInt();
 
-            return credits + ", " + creditsEarned;
+            return creditsEarned + ", " + creditsEarned;
         });
 
         Spark.get("/analytics", (req, res) -> {
